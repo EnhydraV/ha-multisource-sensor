@@ -35,8 +35,9 @@ multisource_sensor:
   recency_attr: last_updated     # last_updated (recommended) | last_changed
   backfill: statistics           # statistics | none
   backfill_days: 3650            # upper bound; effectively capped by retention
-  exclude:
-    - sensor.source_a_garage_temperature   # entities to ignore
+  exclude:                                 # each entry is a regex (full match)
+    - sensor.source_a_garage_temperature   # exact entity_id still works
+    - 'sensor\..*_battery'                  # e.g. ignore all battery sensors
   # Explicit groups (optional, complement / take priority over the regex):
   groups:
     - target: sensor.cellar_temperature

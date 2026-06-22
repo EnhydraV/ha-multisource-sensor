@@ -83,7 +83,20 @@ class MultisourceCoordinator:
         self._rx = re.compile(pattern) if pattern else None
         self._target_format = target_format
         self._name_format = name_format
-        self._exclude = set(exclude)
+        # exclude : chaque entrée est une regex (fullmatch). Une entrée invalide
+        # en tant que regex est conservée en comparaison littérale stricte.
+        self._exclude_rx: list[re.Pattern] = []
+        self._exclude_literal: set[str] = set()
+        for item in exclude:
+            try:
+                self._exclude_rx.append(re.compile(item))
+            except re.error:
+                _LOGGER.warning(
+                    "multisource_sensor : motif exclude invalide, traité "
+                    "littéralement : %s",
+                    item,
+                )
+                self._exclude_literal.add(item)
         self._explicit = explicit_groups
 
         # target_entity_id -> entité vivante (MultisourceSensor)
@@ -103,6 +116,12 @@ class MultisourceCoordinator:
         self._debounce_cancel = None
 
     # --- Initialisation ------------------------------------------------------
+
+    def _is_excluded(self, entity_id: str) -> bool:
+        """True si `entity_id` est exclu (regex fullmatch ou littéral)."""
+        if entity_id in self._exclude_literal:
+            return True
+        return any(rx.fullmatch(entity_id) for rx in self._exclude_rx)
 
     async def async_load(self) -> None:
         """Charge les signatures persistées."""
@@ -156,7 +175,7 @@ class MultisourceCoordinator:
         # Auto-détection
         if self._rx is not None:
             for entity_id in self.hass.states.async_entity_ids("sensor"):
-                if entity_id in self._exclude:
+                if self._is_excluded(entity_id):
                     continue
                 m = self._rx.match(entity_id)
                 if not m:

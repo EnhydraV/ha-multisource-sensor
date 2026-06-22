@@ -65,8 +65,9 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(
                     CONF_BACKFILL_DAYS, default=DEFAULT_BACKFILL_DAYS
                 ): cv.positive_int,
+                # Chaque entrée est une regex (fullmatch) ou un entity_id littéral.
                 vol.Optional(CONF_EXCLUDE, default=[]): vol.All(
-                    cv.ensure_list, [cv.entity_id]
+                    cv.ensure_list, [cv.string]
                 ),
                 vol.Optional(CONF_GROUPS, default=[]): vol.All(
                     cv.ensure_list, [GROUP_SCHEMA]

@@ -48,6 +48,18 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   avec `mean_type=StatisticMeanType.ARITHMETIC` (import gardé : fallback `has_mean`
   si HA < 2025.5). `has_mean` est retiré côté HA en 2026.4.
 
+- **Fix crash `resolved_unit` (AttributeError native_unit)** : même motif que
+  state_class. `_attr_native_unit_of_measurement` (et `_attr_device_class`)
+  n'étaient écrits que conditionnellement dans `_recompute` ; désormais
+  initialisés à None dans `__init__`.
+- **Dépréciation `unit_class`** : `backfill.py` ajoute `unit_class` à la metadata
+  via `_unit_class()` (lookup `STATISTIC_UNIT_TO_UNIT_CONVERTER`, None si pas de
+  convertisseur). Requis par `async_import_statistics` dès HA 2025.11.
+- **`exclude` accepte les regex** : chaque entrée de `exclude` est compilée en
+  regex et testée en `fullmatch` (`coordinator._is_excluded`) ; entrée invalide
+  → comparaison littérale + warning. Schéma assoupli `cv.entity_id` → `cv.string`
+  dans `__init__.py`. Rétrocompatible (un entity_id exact = fullmatch de lui-même).
+
 ## Pistes connues (non faites)
 
 - Config flow (UI) au lieu du YAML.
