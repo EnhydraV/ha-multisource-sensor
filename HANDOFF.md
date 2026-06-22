@@ -31,6 +31,13 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   (rechargement/redémarrage, `entry.platform == DOMAIN`) ne sont pas considérées
   comme un conflit.
 
+- **Mise en conformité structure HACS** : tout le code de l'intégration
+  (`__init__.py`, `coordinator.py`, `sensor.py`, `backfill.py`, `const.py`,
+  `manifest.json`, `strings.json`, `translations/`) a été déplacé de la racine
+  vers `custom_components/multisource_sensor/` via `git mv`. Ajout d'un
+  `hacs.json` (name + render_readme) et d'un `.gitignore` à la racine. HACS
+  rejetait le dépôt tant que `custom_components/*/manifest.json` n'existait pas.
+
 ## Pistes connues (non faites)
 
 - Config flow (UI) au lieu du YAML.

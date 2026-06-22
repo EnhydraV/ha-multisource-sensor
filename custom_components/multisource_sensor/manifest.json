@@ -5,7 +5,7 @@
   "documentation": "https://github.com/EnhydraV/ha-multisource-sensor",
   "issue_tracker": "https://github.com/EnhydraV/ha-multisource-sensor/issues",
   "dependencies": ["recorder"],
-  "codeowners": ["@vincent"],
+  "codeowners": ["@EnhydraV"],
   "iot_class": "calculated",
   "config_flow": false
 }
