@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 
 from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.statistics import (
+    STATISTIC_UNIT_TO_UNIT_CONVERTER,
     async_import_statistics,
     statistics_during_period,
 )
@@ -33,6 +34,16 @@ except ImportError:  # HA < 2025.5 : on retombe sur has_mean.
     _HAS_MEAN_TYPE = False
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _unit_class(unit: str | None) -> str | None:
+    """Convertisseur d'unité associé à `unit`, ou None si aucun n'existe.
+
+    Requis par async_import_statistics depuis HA 2025.11 (sinon déprécié).
+    None est la valeur correcte quand l'unité n'est pas convertible (ex. %).
+    """
+    converter = STATISTIC_UNIT_TO_UNIT_CONVERTER.get(unit)
+    return converter.UNIT_CLASS if converter is not None else None
 
 
 async def async_backfill_statistics(
@@ -118,6 +129,7 @@ async def async_backfill_statistics(
         "name": target_name,
         "source": "recorder",          # statistique « interne » liée à une entité
         "statistic_id": target_entity_id,
+        "unit_class": _unit_class(unit),
         "unit_of_measurement": unit,
     }
     if _HAS_MEAN_TYPE:
