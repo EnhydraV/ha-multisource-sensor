@@ -165,6 +165,8 @@ class MultisourceSensor(SensorEntity):
     async def async_added_to_hass(self) -> None:
         self._resubscribe()
         self._recompute()
+        # L'entité est maintenant dans le registre : on peut synchroniser sa pièce.
+        self._coordinator.async_sync_area(self.entity_id, self._sources)
 
     async def async_will_remove_from_hass(self) -> None:
         if self._unsub is not None:

@@ -23,6 +23,7 @@ import re
 from dataclasses import dataclass, field
 
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -268,7 +269,14 @@ class MultisourceCoordinator:
         if new_entities and self._async_add_entities is not None:
             self._async_add_entities(new_entities)
 
-        # 3. Backfills (après ajout, pour que l'unit soit résolu).
+        # 3. Synchronisation de la pièce (area) : 1re source qui en a une.
+        # Les entités tout juste créées (pas encore enregistrées) sont traitées
+        # par MultisourceSensor.async_added_to_hass.
+        for target, grp in groups.items():
+            if target in self._entities and grp.sources:
+                self.async_sync_area(target, grp.sources)
+
+        # 4. Backfills (après ajout, pour que l'unit soit résolu).
         for grp in backfill_targets:
             self.hass.async_create_task(self._async_backfill_group(grp))
 
@@ -283,6 +291,50 @@ class MultisourceCoordinator:
             sources=grp.sources,
             recency_attr=self.recency_attr,
         )
+
+    # --- Synchronisation de la pièce (area) ----------------------------------
+
+    @callback
+    def async_sync_area(self, target_entity_id: str, sources: list[str]) -> None:
+        """Attribue à la cible la pièce de la 1re source qui en a une.
+
+        On parcourt les sources dans l'ordre de priorité et on retient la pièce
+        de la première qui en possède une. Si aucune source n'a de pièce, on ne
+        touche à rien (on n'efface jamais une pièce existante). La synchro est
+        forcée : un area_id posé à la main est réécrasé dès qu'une source en a une.
+        """
+        ent_reg = er.async_get(self.hass)
+        target_entry = ent_reg.async_get(target_entity_id)
+        if target_entry is None:
+            # Pas encore enregistrée : appliquée à la prochaine passe / au ajout.
+            return
+        area_id = None
+        for src in sources:
+            area_id = self._source_area(ent_reg, src)
+            if area_id is not None:
+                break
+        if area_id is None:
+            return  # aucune source n'a de pièce -> on laisse la cible intacte
+        if target_entry.area_id != area_id:
+            ent_reg.async_update_entity(target_entity_id, area_id=area_id)
+            _LOGGER.info(
+                "multisource_sensor : pièce de %s synchronisée -> %s",
+                target_entity_id,
+                area_id,
+            )
+
+    def _source_area(self, ent_reg, entity_id: str) -> str | None:
+        """Pièce effective d'une source : son area_id, sinon celui de son device."""
+        entry = ent_reg.async_get(entity_id)
+        if entry is None:
+            return None
+        if entry.area_id is not None:
+            return entry.area_id
+        if entry.device_id is not None:
+            device = dr.async_get(self.hass).async_get(entry.device_id)
+            if device is not None:
+                return device.area_id
+        return None
 
     # --- Détection de collision de cible -------------------------------------
 

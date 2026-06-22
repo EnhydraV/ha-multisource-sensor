@@ -60,6 +60,16 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   → comparaison littérale + warning. Schéma assoupli `cv.entity_id` → `cv.string`
   dans `__init__.py`. Rétrocompatible (un entity_id exact = fullmatch de lui-même).
 
+- **Synchronisation de la pièce (area)** : le capteur synthétique hérite de la
+  pièce de ses sources via `coordinator.async_sync_area`. Mode permissif : on
+  prend la pièce de la **1re source** (ordre de priorité) qui en a une ; si
+  aucune n'en a, on ne touche à rien (jamais d'effacement). Synchro forcée : un
+  area_id manuel est réécrasé dès qu'une source en a une. Pièce effective d'une
+  source = son `area_id`, sinon celui de son `device` (`_source_area`). Appelée à
+  chaque réconciliation pour les cibles possédées, et dans
+  `MultisourceSensor.async_added_to_hass` pour l'entité fraîchement créée (pas
+  encore dans le registre lors de la passe).
+
 ## Pistes connues (non faites)
 
 - Config flow (UI) au lieu du YAML.
