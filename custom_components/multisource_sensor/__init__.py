@@ -14,6 +14,7 @@ import voluptuous as vol
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.typing import ConfigType
@@ -125,10 +126,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data[DOMAIN][DATA_COORDINATOR] = coordinator
 
     async def _handle_backfill_helper(call) -> None:
-        """Reconstruit l'historique des group sensors ciblés (min/max/mean)."""
+        """Reconstruit l'historique des helpers combine ciblés (min/max/mean)."""
         days = call.data["days"]
         for entity_id in call.data["entity_id"]:
-            await async_backfill_helper(hass, entity_id, days)
+            try:
+                await async_backfill_helper(hass, entity_id, days)
+            except Exception as err:  # noqa: BLE001 — on remonte une erreur lisible
+                _LOGGER.exception("backfill_helper a échoué pour %s", entity_id)
+                raise HomeAssistantError(
+                    f"backfill_helper a échoué pour {entity_id} : {err}"
+                ) from err
 
     hass.services.async_register(
         DOMAIN,

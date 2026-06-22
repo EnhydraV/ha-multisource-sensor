@@ -17,7 +17,6 @@ from datetime import datetime, timedelta
 from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.statistics import (
     async_import_statistics,
-    clear_statistics,
     get_metadata,
 )
 from homeassistant.const import (
@@ -84,10 +83,9 @@ async def async_backfill_helper(
         _build_metadata, hass, helper_entity_id
     )
 
-    # Remplacement complet : on efface tout, puis on réimporte.
-    await recorder.async_add_executor_job(
-        clear_statistics, recorder, [helper_entity_id]
-    )
+    # Remplacement complet : on efface tout, puis on réimporte. Les deux passent
+    # par la file de tâches du recorder (thread unique), dans cet ordre.
+    recorder.async_clear_statistics([helper_entity_id])
     _LOGGER.info(
         "backfill_helper : %s reconstruit (type %s) — %d points horaires",
         helper_entity_id,

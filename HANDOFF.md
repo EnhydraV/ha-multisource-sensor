@@ -85,7 +85,11 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   dans `_MEMBER_KEYS` (`entities`/`entity_ids`/`members`). Couvre group ET les
   helpers « combine » d'autres intégrations. En cas d'échec, le log dump le
   domaine réel + les clés de config dispo (diagnostic). Sélecteur `services.yaml`
-  élargi (plus de filtre `integration: group`).
+  élargi (plus de filtre `integration: group`). **Effacement via
+  `recorder.async_clear_statistics([id])`** (file de tâches du recorder, avant
+  l'import) et non plus `clear_statistics` dans un executor parallèle (causait un
+  « Unknown error » par conflit de session DB). Le handler du service attrape les
+  exceptions → `_LOGGER.exception` + `HomeAssistantError` lisible.
 
 - **Réconciliation manuelle (`auto_discovery` + service `refresh`)** : option YAML
   `auto_discovery` (défaut `true`). À `false`, `coordinator.async_start` ne
