@@ -1,0 +1,8 @@
+{
+  "issues": {
+    "target_collision": {
+      "title": "Entity ID already in use",
+      "description": "The synthetic sensor `{target}` was not created because this entity ID is already used by another entity (origin: `{owner}`). multisource_sensor never overwrites an existing entity.\n\nFix it by changing `target_format` (or the group's `target`) so it produces a free entity ID, or by removing/renaming the conflicting entity. The sensor is created automatically once the entity ID is free."
+    }
+  }
+}

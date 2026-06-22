@@ -1,0 +1,8 @@
+{
+  "issues": {
+    "target_collision": {
+      "title": "Identifiant d'entité déjà utilisé",
+      "description": "Le capteur synthétique `{target}` n'a pas été créé car cet identifiant d'entité est déjà utilisé par une autre entité (origine : `{owner}`). multisource_sensor n'écrase jamais une entité existante.\n\nPour corriger : modifie `target_format` (ou le `target` du groupe) pour produire un identifiant libre, ou supprime/renomme l'entité en conflit. Le capteur est créé automatiquement dès que l'identifiant est libre."
+    }
+  }
+}

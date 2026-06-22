@@ -1,0 +1,11 @@
+{
+  "domain": "multisource_sensor",
+  "name": "Multisource Sensor",
+  "version": "0.1.0",
+  "documentation": "https://github.com/EnhydraV/ha-multisource-sensor",
+  "issue_tracker": "https://github.com/EnhydraV/ha-multisource-sensor/issues",
+  "dependencies": ["recorder"],
+  "codeowners": ["@vincent"],
+  "iot_class": "calculated",
+  "config_flow": false
+}
