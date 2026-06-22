@@ -70,6 +70,17 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   `MultisourceSensor.async_added_to_hass` pour l'entité fraîchement créée (pas
   encore dans le registre lors de la passe).
 
+- **Service `backfill_helper`** (`helper_backfill.py`) : reconstruit l'historique
+  statistics d'un helper « Combine the state of several sensors » (group sensor,
+  type min/max/mean) à partir des stats horaires de ses membres. Membres + type
+  lus depuis le config entry (`options[CONF_ENTITIES]` / `options[CONF_TYPE]`).
+  Réduction appliquée heure par heure et par statistique (mean/min/max). Mean :
+  moyenne horaire exacte (linéarité), min/max = bornes. Chaque appel ÉCRASE
+  (`clear_statistics`) puis réimporte. Metadata du helper réutilisée via
+  `get_metadata`, sinon construite (mean_type ARITHMETIC). Service défini dans
+  `__init__.py` + `services.yaml`. Réutilise `_get_period`/`_unit_class`/
+  `_HAS_MEAN_TYPE` de `backfill.py`.
+
 ## Pistes connues (non faites)
 
 - Config flow (UI) au lieu du YAML.

@@ -135,6 +135,38 @@ accepted behavior.
   card, Plotly…). The recent "states" history remains the one accumulated by the
   synthetic sensor since its creation.
 
+## Backfilling group helpers (`backfill_helper` service)
+
+Once your synthetic sensors have a long-term history, you may feed them into a
+**"Combine the state of several sensors"** helper (the `group` sensor: `min`,
+`max` or `mean`). That helper only records statistics from its creation onward,
+so its past is empty. The `multisource_sensor.backfill_helper` service
+reconstructs it by replaying the group's algorithm hour by hour over its
+members' hourly statistics.
+
+```yaml
+service: multisource_sensor.backfill_helper
+data:
+  entity_id: sensor.house_mean_temperature   # one or more group sensors
+  days: 3650                                  # optional, history depth
+```
+
+Each call **overwrites and replaces** the helper's existing statistics (it
+clears them first, then re-imports). It is safe to re-run on demand. The
+member list and combination type are read from the helper's own config entry;
+only `min`, `max` and `mean` are supported.
+
+**Fidelity (approximation).** The reduction is applied independently to each
+hourly statistic (mean/min/max) across the members present that hour:
+
+- `mean`: the hourly **mean is exact** (mean of a mean equals the mean of the
+  members' means, by linearity); the reconstructed min/max are the *mean of the
+  members' min/max*, i.e. bounds, not the true instantaneous min/max.
+- `min` / `max`: all three aggregates are per-statistic approximations.
+- On an hour where a member has no data, the reduction runs over the members
+  present that hour. This works from hourly statistics only (raw `states` are
+  purged), so it cannot be exact for the distant past.
+
 ## Possible improvements
 
 - Config flow (UI) instead of YAML.

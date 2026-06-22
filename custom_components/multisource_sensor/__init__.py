@@ -32,8 +32,17 @@ from .const import (
     DEFAULT_BACKFILL_DAYS,
     DEFAULT_RECENCY_ATTR,
     DOMAIN,
+    SERVICE_BACKFILL_HELPER,
 )
 from .coordinator import MultisourceCoordinator
+from .helper_backfill import async_backfill_helper
+
+BACKFILL_HELPER_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): cv.entity_ids,
+        vol.Optional("days", default=DEFAULT_BACKFILL_DAYS): cv.positive_int,
+    }
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -100,6 +109,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][DATA_COORDINATOR] = coordinator
+
+    async def _handle_backfill_helper(call) -> None:
+        """Reconstruit l'historique des group sensors ciblés (min/max/mean)."""
+        days = call.data["days"]
+        for entity_id in call.data["entity_id"]:
+            await async_backfill_helper(hass, entity_id, days)
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_BACKFILL_HELPER,
+        _handle_backfill_helper,
+        schema=BACKFILL_HELPER_SCHEMA,
+    )
 
     # Arrêt propre des abonnements.
     hass.bus.async_listen_once(

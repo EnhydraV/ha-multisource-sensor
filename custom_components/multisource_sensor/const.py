@@ -27,6 +27,9 @@ ATTR_LAST_SOURCE_TS = "source_timestamp"
 # États considérés comme invalides / à ignorer
 INVALID_STATES = frozenset({"unknown", "unavailable", "none", "", None})
 
+# Services
+SERVICE_BACKFILL_HELPER = "backfill_helper"
+
 # Clés internes (hass.data) et persistance
 DATA_COORDINATOR = "coordinator"
 STORAGE_KEY = "multisource_sensor.signatures"
