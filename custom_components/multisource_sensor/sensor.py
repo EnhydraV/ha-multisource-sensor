@@ -73,6 +73,10 @@ class MultisourceSensor(SensorEntity):
         self._recency_attr = recency_attr
 
         self._attr_native_value = None
+        # Initialisés à None car _recompute ne les écrit que de façon
+        # conditionnelle (présence d'unité / device_class sur la source).
+        self._attr_native_unit_of_measurement = None
+        self._attr_device_class = None
         self._current_source: str | None = None
         self._current_source_ts = None
         self._unsub = None
