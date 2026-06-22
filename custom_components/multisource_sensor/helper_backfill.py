@@ -43,6 +43,10 @@ _REDUCERS = {
     "mean": lambda values: sum(values) / len(values),
 }
 
+# Clés possibles pour la liste des membres, selon l'intégration backing le helper
+# (group : "entities" ; min_max : "entity_ids" ; etc.). Première clé non vide gagne.
+_MEMBER_KEYS = (CONF_ENTITIES, "entity_ids", "members")
+
 
 async def async_backfill_helper(
     hass: HomeAssistant,
@@ -106,25 +110,39 @@ def _resolve_group(
         )
         return None
     config_entry = hass.config_entries.async_get_entry(entry.config_entry_id)
-    if config_entry is None or config_entry.domain != "group":
+    if config_entry is None:
         _LOGGER.error(
-            "backfill_helper : %s n'est pas un helper « group »", helper_entity_id
+            "backfill_helper : config entry introuvable pour %s", helper_entity_id
         )
         return None
 
-    ctype = config_entry.options.get(CONF_TYPE)
-    members = config_entry.options.get(CONF_ENTITIES) or []
-    if ctype not in _REDUCERS:
+    # On ne se fie pas au domaine (group, helper « combine »… selon les versions)
+    # mais à la FORME de la config : un type min/max/mean + une liste de membres.
+    # data et options sont fusionnés car les intégrations rangent l'un ou l'autre.
+    conf = {**config_entry.data, **config_entry.options}
+    ctype = conf.get(CONF_TYPE)
+    members = next((conf[k] for k in _MEMBER_KEYS if conf.get(k)), None)
+
+    if ctype not in _REDUCERS or not members:
         _LOGGER.error(
-            "backfill_helper : type « %s » non supporté pour %s "
-            "(min, max et mean uniquement)",
-            ctype,
+            "backfill_helper : %s (intégration « %s ») n'est pas un helper combine "
+            "min/max/mean exploitable — type=%r, clés de config dispo=%s",
             helper_entity_id,
+            config_entry.domain,
+            ctype,
+            sorted(conf.keys()),
         )
         return None
-    if not members:
-        _LOGGER.error("backfill_helper : aucun membre déclaré pour %s", helper_entity_id)
-        return None
+
+    if config_entry.domain != "group":
+        _LOGGER.info(
+            "backfill_helper : %s provient de « %s » (pas « group ») — pris en "
+            "charge via type=%s, %d membre(s)",
+            helper_entity_id,
+            config_entry.domain,
+            ctype,
+            len(members),
+        )
     return list(members), ctype
 
 

@@ -26,13 +26,14 @@ backfill_helper:
   fields:
     entity_id:
       name: Helper(s)
-      description: Le ou les group sensors à reconstruire.
+      description: >-
+        Le ou les helpers « combine » (min/max/mean) à reconstruire — group sensor
+        ou équivalent.
       required: true
       selector:
         entity:
           filter:
-            - integration: group
-              domain: sensor
+            - domain: sensor
           multiple: true
     days:
       name: Days

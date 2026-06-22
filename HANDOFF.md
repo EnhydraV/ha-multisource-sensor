@@ -79,7 +79,13 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   (`clear_statistics`) puis réimporte. Metadata du helper réutilisée via
   `get_metadata`, sinon construite (mean_type ARITHMETIC). Service défini dans
   `__init__.py` + `services.yaml`. Réutilise `_get_period`/`_unit_class`/
-  `_HAS_MEAN_TYPE` de `backfill.py`.
+  `_HAS_MEAN_TYPE` de `backfill.py`. **`_resolve_group` ne filtre PLUS sur le
+  domaine `group`** : il lit la config du config entry (data + options fusionnés)
+  par forme — un `type` (CONF_TYPE) ∈ min/max/mean + une liste de membres cherchée
+  dans `_MEMBER_KEYS` (`entities`/`entity_ids`/`members`). Couvre group ET les
+  helpers « combine » d'autres intégrations. En cas d'échec, le log dump le
+  domaine réel + les clés de config dispo (diagnostic). Sélecteur `services.yaml`
+  élargi (plus de filtre `integration: group`).
 
 - **Réconciliation manuelle (`auto_discovery` + service `refresh`)** : option YAML
   `auto_discovery` (défaut `true`). À `false`, `coordinator.async_start` ne

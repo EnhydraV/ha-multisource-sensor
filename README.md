@@ -157,11 +157,13 @@ all times — the "most recent value wins" behavior is never disabled.
 ## Backfilling group helpers (`backfill_helper` service)
 
 Once your synthetic sensors have a long-term history, you may feed them into a
-**"Combine the state of several sensors"** helper (the `group` sensor: `min`,
-`max` or `mean`). That helper only records statistics from its creation onward,
-so its past is empty. The `multisource_sensor.backfill_helper` service
-reconstructs it by replaying the group's algorithm hour by hour over its
-members' hourly statistics.
+**"Combine the state of several sensors"** helper (`min`, `max` or `mean`).
+That helper only records statistics from its creation onward, so its past is
+empty. The `multisource_sensor.backfill_helper` service reconstructs it by
+replaying the combination algorithm hour by hour over its members' hourly
+statistics. The members and combination type are read from the helper's config
+entry by shape (a `min`/`max`/`mean` type plus a member list), so it works
+whatever integration backs the helper, not only the `group` domain.
 
 ```yaml
 service: multisource_sensor.backfill_helper
