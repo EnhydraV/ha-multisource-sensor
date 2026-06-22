@@ -54,6 +54,8 @@ class MultisourceSensor(SensorEntity):
     """Capteur qui reflète la source la plus récente parmi un groupe."""
 
     _attr_should_poll = False
+    # Capteur de mesure : indispensable pour le calcul des statistiques long terme.
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
@@ -117,8 +119,6 @@ class MultisourceSensor(SensorEntity):
                 self._attr_device_class = SensorDeviceClass(dev_class)
             except ValueError:
                 pass
-        if self._attr_state_class is None:
-            self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def resolved_unit(self) -> str | None:
