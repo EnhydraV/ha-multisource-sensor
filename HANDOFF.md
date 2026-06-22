@@ -81,6 +81,28 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   `__init__.py` + `services.yaml`. Réutilise `_get_period`/`_unit_class`/
   `_HAS_MEAN_TYPE` de `backfill.py`.
 
+- **Réconciliation manuelle (`auto_discovery` + service `refresh`)** : option YAML
+  `auto_discovery` (défaut `true`). À `false`, `coordinator.async_start` ne
+  s'abonne plus à `EVENT_ENTITY_REGISTRY_UPDATED` : la détection ne se fait qu'au
+  démarrage et via le service `multisource_sensor.refresh` (param `force` pour
+  rejouer tout le backfill, via `async_refresh(force=True)`). **N'affecte PAS** le
+  suivi live des sources : `MultisourceSensor._resubscribe` /
+  `async_track_state_change_event` reste actif en permanence (logique « valeur la
+  plus récente »). Seul le travail structurel (détection groupes + backfill) passe
+  en manuel.
+
+- **Fix découverte initiale au boot + logs** : `discover()` scanne la machine
+  d'état ; lancée pendant le setup plateforme, elle tournait trop tôt (sources
+  pas encore peuplées) → aucune entité au démarrage, et en `auto_discovery: false`
+  plus de filet pour rattraper. Désormais `coordinator.async_schedule_initial_refresh()`
+  (appelée par `sensor.async_setup_platform`, inconditionnellement) diffère la
+  1re découverte à `EVENT_HOMEASSISTANT_STARTED` (ou immédiate si HA déjà démarré,
+  cas du reload). Les entités et leur historique ne sont jamais perdus au reboot
+  (unique_id persistant + historique recorder indexé par entity_id). Logs INFO
+  ajoutés : mode auto/manuel, découverte différée/immédiate, créations, et résumé
+  de réconciliation (groupes/créés/retirés/backfills/actifs) ; WARNING si aucun
+  groupe détecté ; DEBUG du nombre d'entités scannées.
+
 ## Pistes connues (non faites)
 
 - Config flow (UI) au lieu du YAML.

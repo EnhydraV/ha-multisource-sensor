@@ -1,3 +1,21 @@
+refresh:
+  name: Refresh composite sensors
+  description: >-
+    Relance la détection des capteurs composites (groupes) et le backfill des
+    groupes dont la composition a changé. Utile quand auto_discovery est
+    désactivé : la réconciliation ne se fait alors qu'au démarrage et via cette
+    action.
+  fields:
+    force:
+      name: Force
+      description: >-
+        Rejoue le backfill de tous les groupes, même si leur composition n'a pas
+        changé.
+      required: false
+      default: false
+      selector:
+        boolean:
+
 backfill_helper:
   name: Backfill helper statistics
   description: >-

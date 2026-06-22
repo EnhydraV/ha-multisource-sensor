@@ -10,10 +10,12 @@ CONF_BACKFILL = "backfill"
 CONF_EXCLUDE = "exclude"
 CONF_GROUPS = "groups"
 CONF_NAME_FORMAT = "name_format"
+CONF_AUTO_DISCOVERY = "auto_discovery"
 
 # Valeurs par défaut
 DEFAULT_RECENCY_ATTR = "last_updated"  # ou "last_changed"
 DEFAULT_BACKFILL = "statistics"        # "statistics" | "none"
+DEFAULT_AUTO_DISCOVERY = True          # réconciliation auto sur events du registre
 
 # Backfill : nombre de jours d'historique à reconstruire au démarrage
 CONF_BACKFILL_DAYS = "backfill_days"
@@ -29,6 +31,7 @@ INVALID_STATES = frozenset({"unknown", "unavailable", "none", "", None})
 
 # Services
 SERVICE_BACKFILL_HELPER = "backfill_helper"
+SERVICE_REFRESH = "refresh"
 
 # Clés internes (hass.data) et persistance
 DATA_COORDINATOR = "coordinator"

@@ -46,8 +46,9 @@ async def async_setup_platform(
     coordinator = hass.data[DOMAIN][DATA_COORDINATOR]
     coordinator.set_add_entities(async_add_entities)
     coordinator.async_start()
-    # Première réconciliation : crée les entités initiales + backfills nécessaires.
-    await coordinator.async_refresh()
+    # Première réconciliation différée à la fin du démarrage de HA : au boot, les
+    # états des sources ne sont pas encore tous peuplés (cf. async_schedule_…).
+    coordinator.async_schedule_initial_refresh()
 
 
 class MultisourceSensor(SensorEntity):

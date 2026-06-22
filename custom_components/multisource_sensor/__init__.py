@@ -19,6 +19,7 @@ from homeassistant.helpers.discovery import async_load_platform
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    CONF_AUTO_DISCOVERY,
     CONF_BACKFILL,
     CONF_BACKFILL_DAYS,
     CONF_EXCLUDE,
@@ -28,11 +29,13 @@ from .const import (
     CONF_RECENCY_ATTR,
     CONF_TARGET_FORMAT,
     DATA_COORDINATOR,
+    DEFAULT_AUTO_DISCOVERY,
     DEFAULT_BACKFILL,
     DEFAULT_BACKFILL_DAYS,
     DEFAULT_RECENCY_ATTR,
     DOMAIN,
     SERVICE_BACKFILL_HELPER,
+    SERVICE_REFRESH,
 )
 from .coordinator import MultisourceCoordinator
 from .helper_backfill import async_backfill_helper
@@ -41,6 +44,12 @@ BACKFILL_HELPER_SCHEMA = vol.Schema(
     {
         vol.Required("entity_id"): cv.entity_ids,
         vol.Optional("days", default=DEFAULT_BACKFILL_DAYS): cv.positive_int,
+    }
+)
+
+REFRESH_SCHEMA = vol.Schema(
+    {
+        vol.Optional("force", default=False): cv.boolean,
     }
 )
 
@@ -74,6 +83,10 @@ CONFIG_SCHEMA = vol.Schema(
                 vol.Optional(
                     CONF_BACKFILL_DAYS, default=DEFAULT_BACKFILL_DAYS
                 ): cv.positive_int,
+                # false : réconciliation manuelle (service refresh) au lieu d'auto.
+                vol.Optional(
+                    CONF_AUTO_DISCOVERY, default=DEFAULT_AUTO_DISCOVERY
+                ): cv.boolean,
                 # Chaque entrée est une regex (fullmatch) ou un entity_id littéral.
                 vol.Optional(CONF_EXCLUDE, default=[]): vol.All(
                     cv.ensure_list, [cv.string]
@@ -104,6 +117,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         recency_attr=conf[CONF_RECENCY_ATTR],
         backfill_mode=conf[CONF_BACKFILL],
         backfill_days=conf[CONF_BACKFILL_DAYS],
+        auto_discovery=conf[CONF_AUTO_DISCOVERY],
     )
     await coordinator.async_load()
 
@@ -121,6 +135,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         SERVICE_BACKFILL_HELPER,
         _handle_backfill_helper,
         schema=BACKFILL_HELPER_SCHEMA,
+    )
+
+    async def _handle_refresh(call) -> None:
+        """Relance la détection des capteurs composites et leur backfill."""
+        await coordinator.async_refresh(force=call.data["force"])
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REFRESH,
+        _handle_refresh,
+        schema=REFRESH_SCHEMA,
     )
 
     # Arrêt propre des abonnements.

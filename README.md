@@ -35,6 +35,7 @@ multisource_sensor:
   recency_attr: last_updated     # last_updated (recommended) | last_changed
   backfill: statistics           # statistics | none
   backfill_days: 3650            # upper bound; effectively capped by retention
+  auto_discovery: true           # false = reconcile only at startup + on demand
   exclude:                                 # each entry is a regex (full match)
     - sensor.source_a_garage_temperature   # exact entity_id still works
     - 'sensor\..*_battery'                  # e.g. ignore all battery sensors
@@ -134,6 +135,24 @@ accepted behavior.
 - **Display.** Imported data is visible through "Statistics" cards (statistic
   card, Plotly…). The recent "states" history remains the one accumulated by the
   synthetic sensor since its creation.
+
+## Manual reconciliation (`auto_discovery` + `refresh` service)
+
+By default the integration re-runs discovery (and re-backfills changed groups)
+automatically whenever the entity registry changes, debounced. On a large or
+churny setup this can feel heavy. Set `auto_discovery: false` to **stop the
+automatic reconciliation**: discovery then runs only at startup and when you
+call the service.
+
+```yaml
+service: multisource_sensor.refresh
+data:
+  force: false   # true = re-backfill every group, even unchanged ones
+```
+
+This only gates the **structural** work (detecting new/removed groups and
+backfilling). The synthetic sensors keep tracking their sources' live state at
+all times — the "most recent value wins" behavior is never disabled.
 
 ## Backfilling group helpers (`backfill_helper` service)
 

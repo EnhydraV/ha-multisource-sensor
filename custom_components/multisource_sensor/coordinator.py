@@ -22,6 +22,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -75,11 +76,13 @@ class MultisourceCoordinator:
         recency_attr: str,
         backfill_mode: str,
         backfill_days: int,
+        auto_discovery: bool = True,
     ) -> None:
         self.hass = hass
         self.recency_attr = recency_attr
         self.backfill_mode = backfill_mode
         self.backfill_days = backfill_days
+        self._auto_discovery = auto_discovery
 
         self._rx = re.compile(pattern) if pattern else None
         self._target_format = target_format
@@ -140,10 +143,50 @@ class MultisourceCoordinator:
 
     @callback
     def async_start(self) -> None:
-        """Abonnement aux events du registre d'entités."""
+        """Abonnement aux events du registre d'entités (si auto_discovery)."""
+        if not self._auto_discovery:
+            # Mode manuel : la réconciliation ne se fait qu'au démarrage et via
+            # le service multisource_sensor.refresh.
+            _LOGGER.info(
+                "multisource_sensor : auto_discovery désactivé — réconciliation "
+                "uniquement au démarrage et via le service refresh"
+            )
+            return
+        _LOGGER.info(
+            "multisource_sensor : auto_discovery actif — abonnement aux changements "
+            "du registre d'entités (debounce %ss)",
+            RESCAN_DEBOUNCE,
+        )
         self._unsub_registry = self.hass.bus.async_listen(
             er.EVENT_ENTITY_REGISTRY_UPDATED, self._on_registry_updated
         )
+
+    @callback
+    def async_schedule_initial_refresh(self) -> None:
+        """Lance la découverte initiale quand les états des sources sont peuplés.
+
+        Au démarrage de HA, la plateforme sensor est montée AVANT que toutes les
+        intégrations sources aient peuplé la machine d'état : une découverte
+        immédiate ne verrait aucune source. On la diffère donc à
+        EVENT_HOMEASSISTANT_STARTED. Lors d'un rechargement à chaud (HA déjà
+        démarré), on découvre tout de suite.
+        """
+        if self.hass.is_running:
+            _LOGGER.info(
+                "multisource_sensor : HA déjà démarré, découverte initiale immédiate"
+            )
+            self.hass.async_create_task(self.async_refresh())
+            return
+
+        _LOGGER.info(
+            "multisource_sensor : découverte initiale différée à la fin du "
+            "démarrage de HA (états des sources pas encore tous peuplés)"
+        )
+
+        async def _on_started(_event: Event) -> None:
+            await self.async_refresh()
+
+        self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _on_started)
 
     @callback
     def async_stop(self) -> None:
@@ -207,23 +250,42 @@ class MultisourceCoordinator:
 
     # --- Réconciliation -------------------------------------------------------
 
-    async def async_refresh(self) -> None:
+    async def async_refresh(self, force: bool = False) -> None:
         """Recalcule les groupes et réconcilie les entités vivantes.
 
         - nouveau groupe -> création d'entité + backfill ;
         - groupe existant dont les sources changent -> maj à chaud + backfill si
           la signature diffère de celle persistée ;
         - groupe disparu -> retrait de l'entité (et oubli de sa signature).
+
+        `force=True` rejoue le backfill de tous les groupes, même si leur
+        signature n'a pas changé.
         """
+        scanned = len(self.hass.states.async_entity_ids("sensor"))
         groups = self.discover()
+        _LOGGER.debug(
+            "multisource_sensor : %d entités sensor scannées, %d groupe(s) détecté(s)%s",
+            scanned,
+            len(groups),
+            " [force]" if force else "",
+        )
+        if not groups:
+            _LOGGER.warning(
+                "multisource_sensor : aucun groupe détecté (pattern=%s, %d entités "
+                "sensor présentes) — rien à créer",
+                self._rx.pattern if self._rx else None,
+                scanned,
+            )
 
         # 1. Suppressions : entités vivantes sans groupe correspondant.
+        removed = 0
         for target in list(self._entities):
             if target not in groups:
                 entity = self._entities.pop(target)
                 _LOGGER.info("multisource_sensor : retrait de %s (groupe disparu)", target)
                 await entity.async_remove()
                 self._signatures.pop(target, None)
+                removed += 1
 
         new_entities = []
         backfill_targets: list[GroupSpec] = []
@@ -250,14 +312,19 @@ class MultisourceCoordinator:
                 entity = self._build_entity(grp)
                 self._entities[target] = entity
                 new_entities.append(entity)
+                _LOGGER.info(
+                    "multisource_sensor : création de %s depuis %d source(s) : %s",
+                    target,
+                    len(grp.sources),
+                    ", ".join(grp.sources),
+                )
             else:
                 # Mise à jour à chaud des sources si elles ont changé.
                 entity.update_sources(grp.sources, grp.name)
 
-            # Décision de backfill basée sur la signature.
-            if (
-                self.backfill_mode == "statistics"
-                and self._signatures.get(target) != grp.signature
+            # Décision de backfill : signature changée, ou rejeu forcé.
+            if self.backfill_mode == "statistics" and (
+                force or self._signatures.get(target) != grp.signature
             ):
                 backfill_targets.append(grp)
 
@@ -279,6 +346,16 @@ class MultisourceCoordinator:
         # 4. Backfills (après ajout, pour que l'unit soit résolu).
         for grp in backfill_targets:
             self.hass.async_create_task(self._async_backfill_group(grp))
+
+        _LOGGER.info(
+            "multisource_sensor : réconciliation terminée — %d groupe(s), "
+            "%d créé(s), %d retiré(s), %d backfill(s) lancé(s), %d capteur(s) actif(s)",
+            len(groups),
+            len(new_entities),
+            removed,
+            len(backfill_targets),
+            len(self._entities),
+        )
 
     def _build_entity(self, grp: GroupSpec):
         """Instancie un capteur synthétique. Import différé pour éviter un cycle."""
