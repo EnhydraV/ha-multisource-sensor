@@ -24,6 +24,14 @@ from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
+try:
+    # mean_type remplace le booléen has_mean (déprécié, retiré en 2026.4).
+    from homeassistant.components.recorder.models import StatisticMeanType
+
+    _HAS_MEAN_TYPE = True
+except ImportError:  # HA < 2025.5 : on retombe sur has_mean.
+    _HAS_MEAN_TYPE = False
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -106,13 +114,17 @@ async def async_backfill_statistics(
     statistics = [merged[h] for h in sorted(merged)]
 
     metadata = {
-        "has_mean": True,
         "has_sum": False,
         "name": target_name,
         "source": "recorder",          # statistique « interne » liée à une entité
         "statistic_id": target_entity_id,
         "unit_of_measurement": unit,
     }
+    if _HAS_MEAN_TYPE:
+        # Moyenne arithmétique : adapté à une mesure classique (temp, humidité…).
+        metadata["mean_type"] = StatisticMeanType.ARITHMETIC
+    else:
+        metadata["has_mean"] = True
 
     _LOGGER.info(
         "multisource_sensor : import de %d points horaires dans %s",

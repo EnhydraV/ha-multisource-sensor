@@ -38,6 +38,16 @@ l'emporte) et backfill l'historique long terme via `async_import_statistics`.
   `hacs.json` (name + render_readme) et d'un `.gitignore` à la racine. HACS
   rejetait le dépôt tant que `custom_components/*/manifest.json` n'existait pas.
 
+- **Fix crash `_recompute` (AttributeError state_class)** : `sensor.py` lisait
+  `self._attr_state_class` avant toute écriture ; selon la version HA ce backing
+  attribute n'a pas de défaut lisible → `AttributeError` (47 occurrences en logs).
+  `state_class` est désormais un attribut de classe
+  (`_attr_state_class = SensorStateClass.MEASUREMENT`) et la lecture conditionnelle
+  a été supprimée de `_recompute`.
+- **Dépréciation `has_mean` → `mean_type`** : `backfill.py` construit la metadata
+  avec `mean_type=StatisticMeanType.ARITHMETIC` (import gardé : fallback `has_mean`
+  si HA < 2025.5). `has_mean` est retiré côté HA en 2026.4.
+
 ## Pistes connues (non faites)
 
 - Config flow (UI) au lieu du YAML.
