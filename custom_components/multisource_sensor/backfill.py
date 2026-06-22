@@ -86,13 +86,15 @@ async def async_backfill_statistics(
 
     # Fusion heure par heure. Clé = start (datetime aligné à l'heure).
     merged: dict[datetime, dict] = {}
+    # Diagnostic : lignes lues par source + source retenue pour chaque heure.
+    rows_per_source: dict[str, int] = {}
+    provenance: dict[datetime, str] = {}
 
     # On parcourt les sources dans l'ordre de priorité croissante : les écritures
     # ultérieures écrasent les précédentes, donc la dernière source gagne.
     for src in sources:
-        rows = stats.get(src)
-        if not rows:
-            continue
+        rows = stats.get(src) or []
+        rows_per_source[src] = len(rows)
         for row in rows:
             # row["start"] peut être un timestamp (float) selon la version HA.
             raw_start = row["start"]
@@ -114,6 +116,18 @@ async def async_backfill_statistics(
                 "min": row.get("min", mean),
                 "max": row.get("max", mean),
             }
+            provenance[hour] = src
+
+    contrib: dict[str, int] = {}
+    for src in provenance.values():
+        contrib[src] = contrib.get(src, 0) + 1
+    _LOGGER.info(
+        "backfill %s : lignes horaires lues par source=%s ; heures retenues par "
+        "source=%s",
+        target_entity_id,
+        rows_per_source,
+        contrib,
+    )
 
     if not merged:
         _LOGGER.info(
